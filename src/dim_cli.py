@@ -9,7 +9,7 @@ import parse_quantity
 from search_formulas import DimensionalFormulaSearch
 import estimate_formulas
 import report_printing
-
+import gooey
 
 class DimensionalFormulaSearchCli(object):
     @staticmethod
@@ -131,54 +131,56 @@ class DimensionalFormulaSearchCli(object):
         return report_table
 
     @staticmethod
+    @gooey.Gooey(program_name='Dim',
+                 program_description='Tries to guess right equation by using dimentional analysis, available measurements and some unknown component heuristics',
+                 tabbed_groups=True)
     def main():
         DEFAULT_MAX_FORMULAS = 20
         DEFAULT_MAX_CYCLES = 40
 
-        DEFAULT_SIMPLICITY_WEIGHT = 1.0
-        DEFAULT_MAGNITUDE_WEIGHT = 1.0
-        DEFAULT_LINEARITY_WEIGHT = 1.0
-        DEFAULT_PERIODICITY_WEIGHT = 1.0
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument('-f', '--max-formulas', type=int, default=DEFAULT_MAX_FORMULAS,
+        parser = gooey.GooeyParser()
+        equations_search = parser.add_argument_group('Search equations parameters')
+        equations_search.add_argument('-f', '--max-formulas', type=int, default=DEFAULT_MAX_FORMULAS,
                             help='Max formula count to search')
-        parser.add_argument('--max-downcycles', type=int, default=DEFAULT_MAX_CYCLES,
+        equations_search.add_argument('--max-downcycles', type=int, default=DEFAULT_MAX_CYCLES,
                             help='Max number of cycles performed to '
                                  'search new formula without success')
-        parser.add_argument('-s', '--simplicity-weight', type=float, default=DEFAULT_SIMPLICITY_WEIGHT,
+        equations = parser.add_argument_group('Equation heuristics')
+        equations.add_argument('-s', '--simplicity-weight', type=float, default=0.0,
                             help='Weight of formula simplicity '
                                  'during prioritization')
-        parser.add_argument('-m', '--magnitude-weight', type=float, default=DEFAULT_MAGNITUDE_WEIGHT,
+        unknown_heuristics = parser.add_argument_group('Unknown component heuristics')
+        magnitude = unknown_heuristics.add_argument_group('Unknown component magnitude heuristics')
+        magnitude.add_argument('-m', '--magnitude-weight', type=float, default=0.0,
                             help='Weight of formula magnitude during prioritization')
-        parser.add_argument('-M', '--magnitude-greater-better', dest='greater_magniture_is_better', action='store_true',
-                            help='Treat greater magnitude as better')
-        parser.set_defaults(greater_magnitude_is_better=False)
-        parser.add_argument('-l', '--linearity-weight', type=float, default=DEFAULT_LINEARITY_WEIGHT,
+        magnitude.add_argument('-M', '--magnitude-greater-better', choices=['yes', 'no'],
+                            default='yes',
+                            help='Prefere greater magnitude during formula prioritization')
+        unknown_heuristics.add_argument('-l', '--linearity-weight', type=float, default=0.0,
                             help='Weight of formula linearity during prioritization')
-        parser.add_argument('-p', '--periodicity-weight', type=float, default=DEFAULT_PERIODICITY_WEIGHT,
+        unknown_heuristics.add_argument('-p', '--periodicity-weight', type=float, default=0.0,
                             help='Weight of formula periodicity during prioritization')
-        parser.add_argument('-g', '--change-sign-weight', type=float, default=0.0,
+        derivative = unknown_heuristics.add_argument_group('Unknown component derivative heuristics')
+        derivative.add_argument('-g', '--change-sign-weight', type=float, default=0.0,
                             help='Weight of the fact of increasing or decreasing')
-        parser.set_defaults(increase_is_better=True)
-        parser.add_argument('-i', '--increase-is-better', dest='increase_is_better', action='store_true',
+        derivative.add_argument('-i', '--increase-is-better', choices=['yes', 'no'],
+                            default='yes',
                             help='Prefer increase over decrease')
-        parser.add_argument('-d' '--decrease-is-better', dest='increase_is_better', action='store_false',
-                            help='Prefer decrease over increase')
-        parser.add_argument('-c', '--change-magnitude-weight', type=float, default=0.0,
+        derivative.add_argument('-c', '--change-magnitude-weight', type=float, default=0.0,
                             help='Weight of change magnitude during prioritization')
-        parser.set_defaults(greater_change_magnitude_is_better=False)
-        parser.add_argument('-C', '--change-greater-better', dest='greater_change_magnitude_is_better', action='store_true',
+        derivative.add_argument('-C', '--change-greater-better',
+                            choices=['yes', 'no'],
+                            default='yes',
                             help='Treat greater change magnitude as better')
-        parser.add_argument('-n', '--monotonicity-weight', type=float, default=0.0,
+        unknown_heuristics.add_argument('-n', '--monotonicity-weight', type=float, default=0.0,
                             help='Weight of monotonicity during prioritization')
         parser.add_argument('input_csv', type=str,
-                            help='Path to input csv file')
+                            help='Path to input csv file', widget='FileChooser')
         parser.add_argument('searched_quantity', type=str,
                             help='Searched quantity name '
                                  '(should correspond to quantity name in csv)')
         parser.add_argument('out_file', type=str,
-                            help='Path to output file')
+                            help='Path to output file', widget='FileSaver')
 
         args = parser.parse_args()
 
@@ -212,9 +214,9 @@ class DimensionalFormulaSearchCli(object):
         formulas_estimations = estimate_formulas.make_formulas_estimation(
             formulas_represented_by_powers, quantities_table,
             required_quantity_name, influencing_quantity_names_ordered,
-            args.greater_magnitude_is_better,
-            args.increase_is_better,
-            args.greater_change_magnitude_is_better)
+            args.magnitude_greater_better == 'yes',
+            args.increase_is_better == 'yes',
+            args.change_greater_better == 'yes')
 
         report_table = DimensionalFormulaSearchCli.prepare_report_table(
             formulas_represented_by_powers,

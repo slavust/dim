@@ -65,8 +65,7 @@ def make_formulas_estimation(formulas_list,
             evaluated_unknown_component_points)
         raw_linearity_estim = linearity_estimation.make_linearity_estimation(
             todo_param,
-            evaluated_unknown_component_points,
-            dbg_figname=dbg_filename)
+            evaluated_unknown_component_points)
         raw_periodicity_estim = periodicity_estimation.make_periodicity_estimation(
             todo_param,
             evaluated_unknown_component_points)
