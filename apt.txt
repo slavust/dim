@@ -1,1 +1,2 @@
 texlive-latex-base
+texlive-fonts-recommended
